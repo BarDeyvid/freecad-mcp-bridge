@@ -113,6 +113,31 @@ class McpRequestHandler(BaseHTTPRequestHandler):
                     args.get("job_token", ""), page_no, *drain_args
                 )
             self._send_sse(mcp_protocol.tool_call_response(req_id, result))
+        elif name == "inspect_active_document":
+            self._run_code(req_id, _inspect_active_document_code(), drain_args)
+        elif name == "highlight_objects":
+            object_names = args.get("object_names")
+            if (
+                not isinstance(object_names, list)
+                or not 1 <= len(object_names) <= 100
+                or not all(isinstance(item, str) for item in object_names)
+            ):
+                self._send_sse(
+                    mcp_protocol.tool_call_response(
+                        req_id,
+                        {
+                            "page": [],
+                            "has_more": False,
+                            "error": "object_names must contain 1 to 100 strings",
+                        },
+                    )
+                )
+                return
+            self._run_code(
+                req_id,
+                _highlight_objects_code(object_names),
+                drain_args,
+            )
         else:
             self._send_sse(
                 mcp_protocol.error_response(
@@ -143,6 +168,55 @@ class McpRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(b"event: message\ndata: " + body + b"\n\n")
+
+
+def _inspect_active_document_code():
+    return '''
+import json
+doc = App.ActiveDocument
+if doc is None:
+    print(json.dumps({"error": "No active FreeCAD document"}))
+else:
+    objects = []
+    for obj in doc.Objects:
+        row = {"name": obj.Name, "label": obj.Label, "type": obj.TypeId}
+        shape = getattr(obj, "Shape", None)
+        if shape is not None and not shape.isNull():
+            box = shape.BoundBox
+            row["shape"] = {
+                "valid": shape.isValid(),
+                "solids": len(shape.Solids),
+                "faces": len(shape.Faces),
+                "bbox_mm": [round(box.XLength, 4), round(box.YLength, 4), round(box.ZLength, 4)],
+            }
+        objects.append(row)
+    print(json.dumps({"document": doc.Name, "label": doc.Label, "objects": objects}, ensure_ascii=False))
+'''
+
+
+def _highlight_objects_code(object_names):
+    names_literal = json.dumps(object_names, ensure_ascii=False)
+    return '''
+import json
+names = %s
+doc = App.ActiveDocument
+if doc is None:
+    print(json.dumps({"error": "No active FreeCAD document"}))
+else:
+    Gui.Selection.clearSelection()
+    found = []
+    missing = []
+    for name in names:
+        obj = doc.getObject(name)
+        if obj is None:
+            missing.append(name)
+        else:
+            Gui.Selection.addSelection(obj)
+            found.append({"name": obj.Name, "label": obj.Label})
+    if found:
+        Gui.activeDocument().activeView().fitAll()
+    print(json.dumps({"selected": found, "missing": missing}, ensure_ascii=False))
+''' % names_literal
 
 
 def _as_page_no(value):

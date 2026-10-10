@@ -57,6 +57,15 @@ Once connected, the agent has these tools:
 
 ---
 
+## View tools
+
+Alongside the Python tools, the bridge exposes two view-oriented tools:
+
+- **`inspect_active_document()`** — read the active document tree and basic shape facts (validity, solids, faces, bounding box). It does not change the document or view.
+- **`highlight_objects(object_names)`** — visibly select objects in the tree/3D view and frame the selection. It changes only selection and camera, not geometry. It accepts 1–100 exact internal object names.
+
+Together, these tools give an agent a visible interaction loop: inspect the open model, then highlight the objects it is discussing. Output from every tool continues to appear in FreeCAD's Report view. The generic Python tools remain available for trusted clients and still have macro-level access to the session.
+
 ## Preferences
 
 **Edit → Preferences → MCP Bridge:**

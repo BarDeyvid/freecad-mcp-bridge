@@ -68,4 +68,40 @@ GET_OUTPUT_PAGE = {
     },
 }
 
-TOOL_DEFINITIONS = [EXECUTE_PYTHON, EXECUTE_PYTHON_FILE, GET_OUTPUT_PAGE]
+INSPECT_ACTIVE_DOCUMENT = {
+    "name": "inspect_active_document",
+    "description": (
+        "Read a compact summary of the active FreeCAD document and its shape "
+        "objects. This is read-only and does not change the viewport."
+    ),
+    "inputSchema": {"type": "object", "properties": {}},
+}
+
+HIGHLIGHT_OBJECTS = {
+    "name": "highlight_objects",
+    "description": (
+        "Visibly select named objects in the active FreeCAD document and fit "
+        "the 3D view around them. This changes selection/view only, not geometry."
+    ),
+    "inputSchema": {
+        "type": "object",
+        "properties": {
+            "object_names": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 100,
+                "items": {"type": "string"},
+                "description": "Exact internal object names shown in the document tree.",
+            }
+        },
+        "required": ["object_names"],
+    },
+}
+
+TOOL_DEFINITIONS = [
+    EXECUTE_PYTHON,
+    EXECUTE_PYTHON_FILE,
+    GET_OUTPUT_PAGE,
+    INSPECT_ACTIVE_DOCUMENT,
+    HIGHLIGHT_OBJECTS,
+]
